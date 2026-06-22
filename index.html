@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5C3D2E">
+<meta name="description" content="はまぐり窯 陶芸体験 お客様管理">
+<title>はまぐり窯 体験管理</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --clay: #5C3D2E;
+    --clay-light: #8B6355;
+    --clay-pale: #F5EDE8;
+    --ash: #F0EBE3;
+    --smoke: #E8E0D6;
+    --ink: #2C1F14;
+    --ink-mid: #6B5344;
+    --ink-light: #9C8274;
+    --white: #FDFAF7;
+    --glaze-blue: #2A5F8A;
+    --glaze-blue-pale: #E3EDF6;
+    --glaze-green: #2D6A4F;
+    --glaze-green-pale: #E2F0E9;
+    --glaze-amber: #8A5C1A;
+    --glaze-amber-pale: #F5EBDA;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+    background: var(--ash);
+    color: var(--ink);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Header */
+  header {
+    background: var(--clay);
+    color: var(--white);
+    padding: 0 16px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    box-shadow: 0 1px 4px rgba(44,31,20,0.25);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .logo svg { opacity: 0.9; }
+  .header-sub { font-size: 11px; opacity: 0.65; margin-left: 2px; }
+  #loadBadge {
+    font-size: 11px;
+    background: rgba(255,255,255,0.15);
+    padding: 3px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+
+  /* Layout */
+  main {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 16px 12px 80px;
+  }
+
+  /* Stats row */
+  .stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  @media (max-width: 480px) {
+    .stat-row { grid-template-columns: repeat(2, 1fr); }
+  }
+  .stat-card {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    border: 1px solid var(--smoke);
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--ink-light);
+    margin-bottom: 2px;
+  }
+  .stat-val {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--clay);
+  }
+
+  /* Search panel */
+  .search-panel {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+    border: 1px solid var(--smoke);
+  }
+  .search-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .field label {
+    display: block;
+    font-size: 11px;
+    color: var(--ink-light);
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  input[type=text], input[type=date], select {
+    width: 100%;
+    height: 36px;
+    border: 1px solid var(--smoke);
+    border-radius: var(--radius-sm);
+    padding: 0 10px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--ink);
+    background: var(--ash);
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  input[type=text]:focus, input[type=date]:focus, select:focus {
+    border-color: var(--clay-light);
+    background: var(--white);
+  }
+  select { cursor: pointer; }
+  .search-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+  .btn {
+    height: 36px;
+    padding: 0 16px;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 13px;
+    font-family: inherit;
+    cursor: pointer;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  .btn:active { opacity: 0.75; }
+  .btn-primary { background: var(--clay); color: var(--white); }
+  .btn-ghost { background: var(--smoke); color: var(--ink-mid); }
+
+  /* Results table */
+  .results-wrap {
+    background: var(--white);
+    border-radius: var(--radius);
+    border: 1px solid var(--smoke);
+    overflow: hidden;
+  }
+  .results-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--smoke);
+    font-size: 12px;
+    color: var(--ink-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; min-width: 600px; }
+  thead th {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink-light);
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--ash);
+    border-bottom: 1px solid var(--smoke);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  tbody td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--smoke);
+    vertical-align: middle;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--clay-pale); }
+
+  /* Badges */
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-weight: 500;
+    display: inline-block;
+    white-space: nowrap;
+  }
+  .badge-jalan   { background: var(--glaze-blue-pale);  color: var(--glaze-blue); }
+  .badge-asoview { background: var(--glaze-green-pale); color: var(--glaze-green); }
+  .badge-uracata { background: var(--glaze-amber-pale); color: var(--glaze-amber); }
+  .badge-direct  { background: var(--smoke); color: var(--ink-mid); }
+  .badge-500     { background: #EDE9F6; color: #4A347A; }
+  .badge-1kg     { background: #F6EDE9; color: #7A3428; }
+
+  /* Status */
+  .status-done { color: var(--glaze-green); font-size: 12px; font-weight: 500; }
+  .status-pend { color: var(--glaze-amber); font-size: 12px; }
+  .status-none { color: var(--ink-light); font-size: 12px; }
+
+  /* Detail btn */
+  .btn-detail {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--smoke);
+    background: var(--white);
+    color: var(--clay);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  .btn-detail:hover { background: var(--clay-pale); border-color: var(--clay-light); }
+
+  /* Pagination */
+  .pagination {
+    padding: 10px 14px;
+    border-top: 1px solid var(--smoke);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--ink-light);
+  }
+  .pg-btn {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--smoke);
+    background: var(--white);
+    color: var(--ink-mid);
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .pg-btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* Empty */
+  .empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--ink-light);
+    font-size: 14px;
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(44,31,20,0.45);
+    z-index: 200;
+    padding: 20px;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--white);
+    border-radius: var(--radius);
+    width: 100%;
+    max-width: 460px;
+    max-height: 85vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .modal-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--smoke);
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    z-index: 1;
+  }
+  .modal-head h2 { font-size: 15px; font-weight: 600; }
+  .btn-close {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: var(--smoke);
+    color: var(--ink-mid);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .modal-body { padding: 12px 16px 20px; }
+  .detail-section { margin-bottom: 16px; }
+  .detail-section-title {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    border-bottom: 1px solid var(--smoke);
+    padding-bottom: 4px;
+    margin-bottom: 8px;
+  }
+  .detail-row {
+    display: flex;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 13px;
+  }
+  .detail-key { color: var(--ink-light); min-width: 80px; flex-shrink: 0; }
+  .detail-val { color: var(--ink); word-break: break-all; }
+  .tel-link { color: var(--clay); text-decoration: none; }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--clay);
+    color: var(--white);
+    padding: 8px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 300;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Bottom nav (mobile) */
+  .bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--white);
+    border-top: 1px solid var(--smoke);
+    padding: 8px 0 env(safe-area-inset-bottom);
+    z-index: 50;
+  }
+  @media (max-width: 600px) {
+    .bottom-nav { display: flex; }
+    .bottom-nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      font-size: 10px;
+      color: var(--ink-light);
+      padding: 4px 0;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .bottom-nav-item.active { color: var(--clay); }
+    .bottom-nav-icon { font-size: 20px; }
+  }
+
+  @media (max-width: 600px) {
+    .stat-val { font-size: 17px; }
+    thead th { font-size: 10px; padding: 7px 8px; }
+    tbody td { padding: 9px 8px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <ellipse cx="11" cy="13" rx="8" ry="6" stroke="white" stroke-width="1.5" fill="none"/>
+      <path d="M4 13 Q6 6 11 5 Q16 6 18 13" stroke="white" stroke-width="1.5" fill="none"/>
+      <line x1="11" y1="5" x2="11" y2="2" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    はまぐり窯
+    <span class="header-sub">体験管理</span>
+  </div>
+  <div id="loadBadge">読み込み中...</div>
+</header>
+
+<main>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-label">件数</div>
+      <div class="stat-val" id="s-count">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">合計体験料</div>
+      <div class="stat-val" id="s-fee">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">発送済み</div>
+      <div class="stat-val" id="s-shipped">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">未配達</div>
+      <div class="stat-val" id="s-pending">—</div>
+    </div>
+  </div>
+
+  <div class="search-panel">
+    <div class="search-grid">
+      <div class="field">
+        <label>開始日</label>
+        <input type="date" id="dateFrom" oninput="doSearch()">
+      </div>
+      <div class="field">
+        <label>終了日</label>
+        <input type="date" id="dateTo" oninput="doSearch()">
+      </div>
+      <div class="field">
+        <label>お客様名</label>
+        <input type="text" id="nameQ" placeholder="名前で検索..." oninput="doSearch()">
+      </div>
+      <div class="field">
+        <label>コース</label>
+        <select id="courseQ" onchange="doSearch()">
+          <option value="">すべて</option>
+          <option value="500ｇ">500g</option>
+          <option value="1㎏">1kg</option>
+          <option value="その他">その他</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>予約サイト</label>
+        <select id="siteQ" onchange="doSearch()">
+          <option value="">すべて</option>
+          <option value="じゃらん">じゃらん</option>
+          <option value="アソビュー">アソビュー</option>
+          <option value="ウラカタ">ウラカタ</option>
+          <option value="直接">直接</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>発送・受け取り</label>
+        <select id="shipQ" onchange="doSearch()">
+          <option value="">すべて</option>
+          <option value="発送">発送</option>
+          <option value="受け取り">受け取り</option>
+        </select>
+      </div>
+    </div>
+    <div class="search-actions">
+      <button class="btn btn-ghost" onclick="clearAll()">クリア</button>
+    </div>
+  </div>
+
+  <div class="results-wrap">
+    <div class="results-header">
+      <span id="resultCount">— 件</span>
+      <span id="pageInfo" style="font-size:11px;"></span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>日付</th>
+            <th>名前</th>
+            <th>作品</th>
+            <th>コース</th>
+            <th>予約サイト</th>
+            <th>体験料</th>
+            <th>配達状況</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</main>
+
+<!-- Detail modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modalBox">
+    <div class="modal-head">
+      <h2 id="modalTitle">詳細</h2>
+      <button class="btn-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-item active">
+    <span class="bottom-nav-icon">🔍</span>
+    <span>検索</span>
+  </div>
+  <div class="bottom-nav-item" onclick="clearAll()">
+    <span class="bottom-nav-icon">↺</span>
+    <span>リセット</span>
+  </div>
+</nav>
+
+<script>
+const SHEET_ID = "1WCZHwEMiOVBWVgFX5p-lEtAuPamoKOq_5LEI3tMPZGA";
+const GID = "2032432064";
+const PAGE_SIZE = 25;
+
+let allData = [];
+let filtered = [];
+let currentPage = 0;
+
+const SITE_BADGE = {
+  "じゃらん": "badge-jalan",
+  "アソビュー": "badge-asoview",
+  "ウラカタ": "badge-uracata",
+  "直接": "badge-direct"
+};
+const COURSE_BADGE = { "500ｇ": "badge-500", "1㎏": "badge-1kg" };
+
+function toDateStr(val) {
+  if (!val) return "";
+  const d = new Date(val);
+  if (isNaN(d)) return String(val);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
+function fmtDate(str) {
+  if (!str) return "";
+  const [y, m, d] = str.split("-");
+  return `${y}/${m}/${d}`;
+}
+
+function parseCSV(text) {
+  const rows = [];
+  let cur = [], cell = "", inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+      else if (c === '"') inQ = false;
+      else cell += c;
+    } else {
+      if (c === '"') inQ = true;
+      else if (c === ',') { cur.push(cell); cell = ""; }
+      else if (c === '\n') { cur.push(cell); rows.push(cur); cur = []; cell = ""; }
+      else if (c !== '\r') cell += c;
+    }
+  }
+  if (cell || cur.length) { cur.push(cell); rows.push(cur); }
+  return rows;
+}
+
+async function loadSheet() {
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=${GID}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("fetch failed");
+    const text = await res.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) throw new Error("データなし");
+    const header = rows[0];
+    allData = rows.slice(1).map(r => {
+      const o = {};
+      header.forEach((h, i) => o[h] = (r[i] || "").trim());
+      return o;
+    });
+    const badge = document.getElementById("loadBadge");
+    badge.textContent = `${allData.length}件`;
+    badge.style.background = "rgba(255,255,255,0.25)";
+    doSearch();
+  } catch (e) {
+    document.getElementById("loadBadge").textContent = "オフライン";
+    loadFallback();
+  }
+}
+
+function loadFallback() {
+  allData = [];
+  doSearch();
+  showToast("スプレッドシートに接続できません。共有設定を確認してください。");
+}
+
+function doSearch() {
+  const from = document.getElementById("dateFrom").value;
+  const to = document.getElementById("dateTo").value;
+  const name = document.getElementById("nameQ").value.trim();
+  const course = document.getElementById("courseQ").value;
+  const site = document.getElementById("siteQ").value;
+  const ship = document.getElementById("shipQ").value;
+
+  filtered = allData.filter(r => {
+    const d = toDateStr(r["日付"]);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (name && !(r["名前"] || "").includes(name)) return false;
+    if (course && r["コース"] !== course) return false;
+    if (site && r["予約サイト"] !== site) return false;
+    if (ship && !(r["発送・受け取り"] || "").includes(ship)) return false;
+    return true;
+  });
+
+  currentPage = 0;
+  updateStats();
+  renderPage();
+}
+
+function updateStats() {
+  const total = filtered.length;
+  const fee = filtered.reduce((s, r) => {
+    const f = parseFloat((r["体験料"] || "").replace(/[^\d.]/g, "")) || 0;
+    return s + f;
+  }, 0);
+  const shipped = filtered.filter(r => r["配達状況"] === "お届け完了").length;
+  const pending = filtered.filter(r => !r["配達状況"]).length;
+
+  document.getElementById("s-count").textContent = total + "件";
+  document.getElementById("s-fee").textContent = fee > 0 ? "¥" + fee.toLocaleString() : "—";
+  document.getElementById("s-shipped").textContent = shipped + "件";
+  document.getElementById("s-pending").textContent = pending + "件";
+  document.getElementById("resultCount").textContent = `${total} 件`;
+}
+
+function renderPage() {
+  const tbody = document.getElementById("tbody");
+  const start = currentPage * PAGE_SIZE;
+  const page = filtered.slice(start, start + PAGE_SIZE);
+
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔍</div>該当するデータがありません</div></td></tr>`;
+    document.getElementById("pagination").innerHTML = "";
+    document.getElementById("pageInfo").textContent = "";
+    return;
+  }
+
+  tbody.innerHTML = page.map((r, i) => {
+    const d = fmtDate(toDateStr(r["日付"]));
+    const siteCls = SITE_BADGE[r["予約サイト"]] || "";
+    const courseCls = COURSE_BADGE[r["コース"]] || "";
+    const fee = r["体験料"] ? "¥" + r["体験料"].replace(/[^\d,]/g, "") : "—";
+    const status = r["配達状況"] === "お届け完了"
+      ? `<span class="status-done">✓ 完了</span>`
+      : r["配達状況"]
+        ? `<span class="status-pend">${r["配達状況"]}</span>`
+        : `<span class="status-none">—</span>`;
+    const idx = start + i;
+    return `<tr>
+      <td style="white-space:nowrap;">${d}</td>
+      <td style="font-weight:500;">${r["名前"] || ""}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r["作品"] || ""}">${r["作品"] || ""}</td>
+      <td>${r["コース"] ? `<span class="badge ${courseCls}">${r["コース"]}</span>` : "—"}</td>
+      <td>${r["予約サイト"] ? `<span class="badge ${siteCls}">${r["予約サイト"]}</span>` : "—"}</td>
+      <td style="white-space:nowrap;">${fee}</td>
+      <td>${status}</td>
+      <td><button class="btn-detail" onclick="showDetail(${idx})">詳細</button></td>
+    </tr>`;
+  }).join("");
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const info = totalPages > 1 ? `${currentPage + 1} / ${totalPages} ページ` : "";
+  document.getElementById("pageInfo").textContent = info;
+
+  const pag = document.getElementById("pagination");
+  if (totalPages <= 1) { pag.innerHTML = ""; return; }
+  pag.innerHTML = `
+    <button class="pg-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 0 ? "disabled" : ""}>← 前</button>
+    <span style="flex:1; text-align:center;">${currentPage + 1} / ${totalPages}</span>
+    <button class="pg-btn" onclick="changePage(${currentPage + 1})" ${currentPage >= totalPages - 1 ? "disabled" : ""}>次 →</button>
+  `;
+  pag.style.display = "flex";
+}
+
+function changePage(p) { currentPage = p; renderPage(); window.scrollTo(0, 0); }
+
+function showDetail(idx) {
+  const r = filtered[idx];
+  document.getElementById("modalTitle").textContent = (r["名前"] || "詳細") + " 様";
+
+  const sections = [
+    {
+      title: "予約情報",
+      rows: [
+        ["受付番号", r["受付番号"]],
+        ["日付", fmtDate(toDateStr(r["日付"]))],
+        ["時間", r["時間"] ? formatTime(r["時間"]) : ""],
+        ["予約サイト", r["予約サイト"]],
+        ["コース", r["コース"]],
+      ]
+    },
+    {
+      title: "作品",
+      rows: [
+        ["作品", r["作品"]],
+        ["作品色番号", r["作品色番号"]],
+        ["作品裏サイン", r["作品裏サイン"] ? "あり" : ""],
+      ]
+    },
+    {
+      title: "お客様情報",
+      rows: [
+        ["住所", r["住所"]],
+        ["電話番号", r["電話番号"]],
+        ["メール", r["mail"]],
+      ]
+    },
+    {
+      title: "お支払い・発送",
+      rows: [
+        ["支払い", r["支払い"]],
+        ["体験料", r["体験料"] ? "¥" + r["体験料"].replace(/[^\d,]/g, "") : ""],
+        ["送料", r["送料"]],
+        ["ポイント", r["ポイント"]],
+        ["発送・受け取り", r["発送・受け取り"]],
+        ["発送日", fmtDate(toDateStr(r["発送日"]))],
+        ["追跡番号", r["追跡番号"]],
+        ["配達状況", r["配達状況"]],
+        ["受取日", fmtDate(toDateStr(r["受取日"]))],
+      ]
+    },
+    {
+      title: "備考",
+      rows: [["備考欄", r["備考欄"]]]
+    }
+  ];
+
+  document.getElementById("modalBody").innerHTML = sections.map(s => {
+    const validRows = s.rows.filter(([, v]) => v);
+    if (!validRows.length) return "";
+    return `<div class="detail-section">
+      <div class="detail-section-title">${s.title}</div>
+      ${validRows.map(([k, v]) => {
+        const val = k === "電話番号"
+          ? `<a class="tel-link" href="tel:${v.replace(/[^0-9]/g, "")}">${v}</a>`
+          : k === "メール"
+            ? `<a class="tel-link" href="mailto:${v}">${v}</a>`
+            : v;
+        return `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${val}</span></div>`;
+      }).join("")}
+    </div>`;
+  }).join("");
+
+  document.getElementById("modalOverlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function formatTime(val) {
+  const f = parseFloat(val);
+  if (isNaN(f)) return val;
+  const totalMin = Math.round(f * 24 * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = String(totalMin % 60).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
+function closeModal(e) {
+  if (e && e.target !== document.getElementById("modalOverlay")) return;
+  document.getElementById("modalOverlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function clearAll() {
+  ["dateFrom", "dateTo", "nameQ", "courseQ", "siteQ", "shipQ"].forEach(id => {
+    document.getElementById(id).value = "";
+  });
+  doSearch();
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 3000);
+}
+
+loadSheet();
+</script>
+</body>
+</html>
